@@ -1,6 +1,6 @@
 #include "header.h"
 
-bool validatePort(char* port, char* arg)
+inline bool validatePort(char* port, char* arg)
 {
 	const int maxPortLen = 5;
 	const int maxPortVal = 65535;
@@ -36,7 +36,7 @@ bool validatePort(char* port, char* arg)
 	return true;
 }
 
-void getClientIP(SOCKET client_socket, char* ipStrResult, char* hostName)
+inline void getClientIP(SOCKET client_socket, char* ipStrResult, char* hostName)
 {
 	sockaddr_in addr = {};
 	socklen_t addr_size = sizeof(sockaddr_in);

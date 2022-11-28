@@ -23,7 +23,6 @@
 using namespace std;
 
 void addLogMessage(const char* message, const char* file = NULL, int line = 0);
-bool validatePort(char* port, char* arg);
 void listenForQueries(char* portAtStart, string workingDir);
 string base64_encode(unsigned char const* bytes_to_encode, unsigned int in_len);
 string base64_decode(string const& encoded_string);
