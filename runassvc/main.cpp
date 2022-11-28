@@ -12,6 +12,12 @@ void addLogMessage(const char* message, const char* file, int line)
 
 int main(int argc, char* argv[])
 {
+	if (!access("libssl.so", F_OK))
+	{
+		addLogMessage("Failed to find OpenSSL installed");
+		return 0;
+	}
+
 	addLogMessage("Started");
 
 	string workingDir(argv[0]);

@@ -124,15 +124,38 @@ void listenForQueries(char* portAtStart, string workingDir)
 				result.append(buf, bytesRead);
 		} while (bytesRead > 0);
 
-		string decrypted = "";
 		if (result.length())
 		{
 			addLogMessage((string("Message received: ") + result).data());
-			decrypted = decrypt(result, workingDir);
+
+			unsigned char aesKey[AES_KEY_SIZE]{};
+			string decrypted = decrypt(result, workingDir, aesKey);
+
 			addLogMessage((string("Decrypted message: ") + decrypted).data());
+
+			string sResult = perform(decrypted) ? "Success!" : "Failed!";
+
+			size_t cb = sResult.length() + 1;
+			size_t cBlocks = cb / AES_KEY_SIZE;
+			if (!cBlocks)
+				cBlocks = 1;
+			else if (cb % AES_KEY_SIZE)
+				cBlocks++;
+
+			size_t resBytes = cBlocks * AES_KEY_SIZE;
+			unsigned char buffer[resBytes];
+			unsigned char toAes[cb];
+			memcpy(toAes, sResult.data(), cb - 1);
+			toAes[cb - 1] = '\0';
+
+			if (aesEncrypt(toAes, cb, aesKey, buffer) > 0)
+			{
+				string encrypted = base64_encode(buffer, resBytes);
+				send(client_socket, encrypted.data(), encrypted.length(), 0);
+			}
 		}
 
 		shutdown(client_socket, SHUT_RDWR);
-	};
+	}
 }
 

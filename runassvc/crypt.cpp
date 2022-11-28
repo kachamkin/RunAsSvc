@@ -27,13 +27,73 @@ inline string aesDecrypt(unsigned char* key, unsigned char* data, size_t cb)
 	unsigned char buffer[cb];
 
 	AES_KEY aesKey{};
-	AES_set_decrypt_key(key, AES_KEY_SIZE * 8, &aesKey);
+	if (AES_set_decrypt_key(key, AES_KEY_SIZE * 8, &aesKey) < 0)
+	{
+		addLogMessage("Failed to set AES key", __FILE__, __LINE__);
+		return "";
+	}
+
 	AES_decrypt(data, buffer, &aesKey);
 
 	return (char*)buffer;
 }
 
-string decrypt(string rawData, string workingDir)
+int aesEncrypt(unsigned char* plaintext, int plaintext_len, unsigned char* key, unsigned char* ciphertext)
+{
+	EVP_CIPHER_CTX* ctx = NULL;
+	int len = 0, ciphertext_len = 0;
+
+	unsigned char iv[AES_BLOCK_SIZE / 2]{ 0 };
+
+	if (!(ctx = EVP_CIPHER_CTX_new()))
+	{
+		addLogMessage("Failed to create AES context", __FILE__, __LINE__);
+		return -1;
+	}
+
+	if (1 != EVP_EncryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, NULL, NULL))
+	{
+		addLogMessage("Failed to initialize AES", __FILE__, __LINE__);
+		return -1;
+	}
+
+	if (1 != EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_IVLEN, AES_KEY_SIZE / 2, NULL))
+	{
+		addLogMessage("Failed to initialize IV", __FILE__, __LINE__);
+		return -1;
+	}
+
+	if (1 != EVP_EncryptInit_ex(ctx, NULL, NULL, key, iv)) 
+	{
+		addLogMessage("Failed to set IV", __FILE__, __LINE__);
+		return -1;
+	}
+
+	if (plaintext)
+	{
+		if (1 != EVP_EncryptUpdate(ctx, ciphertext, &len, plaintext, plaintext_len))
+		{
+			addLogMessage("Failed to AES encrypt", __FILE__, __LINE__);
+			return -1;
+		}
+
+		ciphertext_len = len;
+	}
+
+	if (1 != EVP_EncryptFinal_ex(ctx, ciphertext + len, &len))
+	{
+		addLogMessage("Failed to finalize AES encrypt", __FILE__, __LINE__);
+		return -1;
+	}
+
+	ciphertext_len += len;
+
+	EVP_CIPHER_CTX_free(ctx);
+
+	return ciphertext_len;
+}
+
+string decrypt(string rawData, string workingDir, unsigned char* aesKey)
 {
 	RSA* rsa = getRSAfromFile(workingDir);
 
@@ -49,12 +109,10 @@ string decrypt(string rawData, string workingDir)
 		return "";
 	}
 
-	unsigned char aesKey[AES_KEY_SIZE]{};
 	unsigned char data[RSA_BLOCK_SIZE]{};
 	memcpy(data, decoded.substr(0, RSA_BLOCK_SIZE).data(), RSA_BLOCK_SIZE);
 
-	int res = RSA_private_decrypt(RSA_BLOCK_SIZE, data, aesKey, rsa, RSA_PKCS1_PADDING);
-	if (res == - 1)
+	if (RSA_private_decrypt(RSA_BLOCK_SIZE, data, aesKey, rsa, RSA_PKCS1_PADDING) < 0)
 	{
 		addLogMessage("Failed to decrypt AES key", __FILE__, __LINE__);
 		RSA_free(rsa);
