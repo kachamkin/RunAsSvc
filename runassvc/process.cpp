@@ -1,6 +1,6 @@
 #include "header.h"
 
-void restart(int how)
+void performRestart(int how)
 {
 	addLogMessage(how == RB_AUTOBOOT ? "Reboot" : "Shutdown");
 
@@ -8,22 +8,86 @@ void restart(int how)
 	reboot(how);
 }
 
-bool perform(string action)
+inline vector<int64_t> getProcessPidByName(char* name)
 {
-	trim(action);
-	
-	if (action.substr(0, 8) == "#reboot#")
+	vector<int64_t> ret;
+	for (auto const& dir_entry : filesystem::directory_iterator("/proc"))
 	{
-		thread(restart, RB_AUTOBOOT).detach();
-		return true;
+		if (dir_entry.is_directory())
+		{
+			string sPid = (dir_entry.path().string() + "/comm");
+			sPid = sPid.substr(6);
+			sPid = sPid.substr(0, sPid.rfind('/'));
+			FILE* f = fopen((dir_entry.path().string() + "/comm").data(), "r");
+			if (f)
+			{
+				char procName[256]{ '\0' };
+				size_t size = fread(procName, sizeof(char), 256, f);
+				if (size && string(procName) == string(name) + "\n")
+				{
+					try
+					{
+						ret.push_back(stoi(sPid));
+					}
+					catch (...)
+					{
+					}
+				}
+				fclose(f);
+			}
+		}
+	}
+	return ret;
+}
+
+bool inline killProcess(int64_t procID)
+{
+	if (procID)
+	{
+		if (!kill(procID, SIGKILL))
+		{
+			addLogMessage((string("Failed to kill process ") + to_string(procID)).data(), __FILE__, __LINE__);
+			return true;
+		}
+		else
+			addLogMessage((string("Process killed: ") + to_string(procID)).data(), __FILE__, __LINE__);
+
+		return false;
+	}
+	return false;
+}
+
+bool inline performKill(string action)
+{
+	action = action.substr(6);
+	ltrim(action);
+	if (action.empty())
+	{
+		addLogMessage("Failed to kill process: no process PID", __FILE__, __LINE__);
+		return false;
 	}
 
-	if (action.substr(0, 10) == "#shutdown#")
+	int64_t procID = 0;
+	try
 	{
-		thread(restart, RB_POWER_OFF).detach();
-		return true;
+		return killProcess(stoi(action.data()));
 	}
+	catch (...)
+	{
+		bool ret = true;
+		for (auto const& procID : getProcessPidByName(action.data()))
+		{
+			if (!killProcess(procID))
+				ret = false;
+		}
+		return ret;
+	};
 
+	return true;
+}
+
+bool inline performStart(string action)
+{
 	string params = "";
 	size_t start_pos = action.find(";");
 	if (start_pos != wstring::npos)
@@ -44,4 +108,61 @@ bool perform(string action)
 		addLogMessage((string("Started ") + action).data(), __FILE__, __LINE__);
 
 	return true;
+}
+
+vector<string> inline getActiveUsers()
+{
+	vector<string> ret;	
+	setutent();
+	utmp* user = getutent();
+	while (user)
+	{
+		if (user->ut_type == USER_PROCESS)
+			ret.push_back(user->ut_user);
+		user = getutent();
+	}
+	return ret;
+}
+
+bool inline performLogoff(string action)
+{
+	action = action.substr(8);
+	ltrim(action);
+	if (!action.empty())
+		return performStart("pkill;-KILL -u" + action);
+	else
+	{
+		bool ret = true;
+		for (auto const& u : getActiveUsers())
+		{
+			if (!performStart("pkill;-KILL -u" + u))
+				ret = false;
+		}
+		return ret;
+	}
+}
+
+bool perform(string action)
+{
+	trim(action);
+	
+	if (action.substr(0, 8) == "#reboot#")
+	{
+		thread(performRestart, RB_AUTOBOOT).detach();
+		return true;
+	}
+
+	if (action.substr(0, 10) == "#shutdown#")
+	{
+		thread(performRestart, RB_POWER_OFF).detach();
+		return true;
+	}
+
+	if (action.substr(0, 6) == "#kill#")
+		return performKill(action);
+
+	if (action.substr(0, 8) == "#logoff#")
+		return performLogoff(action);
+
+	return performStart(action);
 }

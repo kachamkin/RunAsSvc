@@ -104,7 +104,7 @@
     </ClCompile>
     <Link>
       <AdditionalLibraryDirectories>/usr/lib/x86_64-linux-gnu;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>/usr/lib/x86_64-linux-gnu/libcrypto.a;/usr/lib/x86_64-linux-gnu/libssl.a;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>/usr/lib/x86_64-linux-gnu/libcrypto.so;/usr/lib/x86_64-linux-gnu/libssl.so;%(AdditionalDependencies)</AdditionalDependencies>
       <LibraryDependencies>%(LibraryDependencies)</LibraryDependencies>
       <SharedLibrarySearchPath>/usr/lib/x86_64-linux-gnu;%(SharedLibrarySearchPath)</SharedLibrarySearchPath>
       <AdditionalOptions>
@@ -114,13 +114,18 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
       <AdditionalIncludeDirectories>/home/ubuntu/openssl-3.0.7/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <DebugInformationFormat>None</DebugInformationFormat>
+      <CppLanguageStandard>c++17</CppLanguageStandard>
+      <LinkTimeOptimization>true</LinkTimeOptimization>
+      <Optimization>Full</Optimization>
     </ClCompile>
     <Link>
       <AdditionalLibraryDirectories>/usr/lib/x86_64-linux-gnu;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>/usr/lib/x86_64-linux-gnu/libssl.a;/usr/lib/x86_64-linux-gnu/libcrypto.a;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>/usr/lib/x86_64-linux-gnu/libssl.so;/usr/lib/x86_64-linux-gnu/libcrypto.so;%(AdditionalDependencies)</AdditionalDependencies>
       <LibraryDependencies>%(LibraryDependencies)</LibraryDependencies>
       <SharedLibrarySearchPath>/usr/lib/x86_64-linux-gnu;%(SharedLibrarySearchPath)</SharedLibrarySearchPath>
       <AdditionalOptions>-lcrypto -lssl %(AdditionalOptions)</AdditionalOptions>
+      <DebuggerSymbolInformation>OmitAllSymbolInformation</DebuggerSymbolInformation>
     </Link>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
