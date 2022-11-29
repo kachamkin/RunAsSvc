@@ -15,6 +15,7 @@
 #include <unistd.h>
 #include <sys/reboot.h>
 #include <thread>
+#include <algorithm>
 
 #define SERVICE_NAME "Run As Service"
 #define DEFAULT_PORT "500"
@@ -32,3 +33,6 @@ string base64_decode(string const& encoded_string);
 string decrypt(string rawData, string workingDir, unsigned char* aesKey);
 int aesEncrypt(unsigned char* plaintext, int plaintext_len, unsigned char* key, unsigned char* ciphertext);
 bool perform(string action);
+void rtrim(string& s);
+void ltrim(string& s);
+void trim(string& s);

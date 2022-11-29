@@ -80,6 +80,7 @@
     <ClCompile Include="listen.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="process.cpp" />
+    <ClCompile Include="strings.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="header.h" />

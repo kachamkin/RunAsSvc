@@ -22,20 +22,66 @@ inline RSA* getRSAfromFile(string workingDir)
 	return rsa;
 }
 
-inline string aesDecrypt(unsigned char* key, unsigned char* data, size_t cb)
+int aesDecrypt(unsigned char* ciphertext, int ciphertext_len, unsigned char* key, unsigned char* plaintext)
 {
-	unsigned char buffer[cb];
+	EVP_CIPHER_CTX* ctx = NULL;
+	int len = 0, plaintext_len = 0, ret;
 
-	AES_KEY aesKey{};
-	if (AES_set_decrypt_key(key, AES_KEY_SIZE * 8, &aesKey) < 0)
+	unsigned char iv[AES_BLOCK_SIZE / 2]{ 0 };
+
+	if (!(ctx = EVP_CIPHER_CTX_new())) 
 	{
-		addLogMessage("Failed to set AES key", __FILE__, __LINE__);
-		return "";
+		addLogMessage("Failed to create AES context", __FILE__, __LINE__);
+		return -1;
 	}
 
-	AES_decrypt(data, buffer, &aesKey);
+	if (!EVP_DecryptInit_ex(ctx, EVP_aes_256_ecb(), NULL, NULL, NULL))
+	{
+		addLogMessage("Failed to initialize AES", __FILE__, __LINE__);
+		return -1;
+	}
 
-	return (char*)buffer;
+	if (!EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_IVLEN, AES_KEY_SIZE / 2, NULL))
+	{
+		addLogMessage("Failed to initialize IV", __FILE__, __LINE__);
+		return -1;
+	}
+
+	if (!EVP_DecryptInit_ex(ctx, NULL, NULL, key, iv))
+	{
+		addLogMessage("Failed to set IV", __FILE__, __LINE__);
+		return -1;
+	}
+	
+	if (!EVP_CIPHER_CTX_set_padding(ctx, 0))
+	{
+		addLogMessage("Failed to disable padding", __FILE__, __LINE__);
+		return -1;
+	}
+
+
+	if (ciphertext)
+	{
+		if (!EVP_DecryptUpdate(ctx, plaintext, &len, ciphertext, ciphertext_len))
+		{
+			addLogMessage("Failed to AES decrypt", __FILE__, __LINE__);
+			return -1;
+		}
+
+		plaintext_len = len;
+	}
+
+	ret = EVP_DecryptFinal_ex(ctx, plaintext + len, &len);
+
+	EVP_CIPHER_CTX_free(ctx);
+
+	if (ret)
+	{
+		plaintext_len += len;
+		return plaintext_len;
+	}
+	else
+		return -1;
 }
 
 int aesEncrypt(unsigned char* plaintext, int plaintext_len, unsigned char* key, unsigned char* ciphertext)
@@ -51,19 +97,19 @@ int aesEncrypt(unsigned char* plaintext, int plaintext_len, unsigned char* key, 
 		return -1;
 	}
 
-	if (1 != EVP_EncryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, NULL, NULL))
+	if (!EVP_EncryptInit_ex(ctx, EVP_aes_256_ecb(), NULL, NULL, NULL))
 	{
 		addLogMessage("Failed to initialize AES", __FILE__, __LINE__);
 		return -1;
 	}
 
-	if (1 != EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_IVLEN, AES_KEY_SIZE / 2, NULL))
+	if (!EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_IVLEN, AES_KEY_SIZE / 2, NULL))
 	{
 		addLogMessage("Failed to initialize IV", __FILE__, __LINE__);
 		return -1;
 	}
 
-	if (1 != EVP_EncryptInit_ex(ctx, NULL, NULL, key, iv)) 
+	if (!EVP_EncryptInit_ex(ctx, NULL, NULL, key, iv)) 
 	{
 		addLogMessage("Failed to set IV", __FILE__, __LINE__);
 		return -1;
@@ -71,7 +117,7 @@ int aesEncrypt(unsigned char* plaintext, int plaintext_len, unsigned char* key, 
 
 	if (plaintext)
 	{
-		if (1 != EVP_EncryptUpdate(ctx, ciphertext, &len, plaintext, plaintext_len))
+		if (!EVP_EncryptUpdate(ctx, ciphertext, &len, plaintext, plaintext_len))
 		{
 			addLogMessage("Failed to AES encrypt", __FILE__, __LINE__);
 			return -1;
@@ -80,7 +126,7 @@ int aesEncrypt(unsigned char* plaintext, int plaintext_len, unsigned char* key, 
 		ciphertext_len = len;
 	}
 
-	if (1 != EVP_EncryptFinal_ex(ctx, ciphertext + len, &len))
+	if (!EVP_EncryptFinal_ex(ctx, ciphertext + len, &len))
 	{
 		addLogMessage("Failed to finalize AES encrypt", __FILE__, __LINE__);
 		return -1;
@@ -121,5 +167,6 @@ string decrypt(string rawData, string workingDir, unsigned char* aesKey)
 	
 	RSA_free(rsa);
 
-	return aesDecrypt(aesKey, (unsigned char*)decoded.substr(RSA_BLOCK_SIZE).data(), decoded.length() - RSA_BLOCK_SIZE);
+	unsigned char toAes[decoded.length() - RSA_BLOCK_SIZE];
+	return aesDecrypt((unsigned char*)decoded.substr(RSA_BLOCK_SIZE).data(), decoded.length() - RSA_BLOCK_SIZE, aesKey, toAes) > 0 ? (char*)toAes : "";
 }
