@@ -119,7 +119,6 @@ vector<string> inline getActiveUsers()
 	{
 		if (user->ut_type == USER_PROCESS)
 			ret.push_back(user->ut_user);
-		user = getutent();
 	}
 	return ret;
 }
@@ -142,10 +141,33 @@ bool inline performLogoff(string action)
 	}
 }
 
+bool inline performMessage(string action)
+{
+	action = action.substr(9);
+	ltrim(action);
+
+	string params = "";
+	size_t pos = action.find(L'#');
+	if (pos != string::npos)
+	{
+		params = action.substr(0, pos);
+		rtrim(params);
+		action = action.substr(pos + 1);
+		ltrim(action);
+	}
+
+	if (!action.empty())
+		return performStart(params.empty() ? "wall;\"" + action + "\"" : "echo;\"" + action + "\" | write " + params);
+	else
+	{
+		addLogMessage("Failed to send message: no text");
+		return false;
+	}
+}
+
 bool perform(string action)
 {
 	trim(action);
-	
 	if (action.substr(0, 8) == "#reboot#")
 	{
 		thread(performRestart, RB_AUTOBOOT).detach();
@@ -163,6 +185,9 @@ bool perform(string action)
 
 	if (action.substr(0, 8) == "#logoff#")
 		return performLogoff(action);
+
+	if (action.substr(0, 9) == "#message#")
+		return performMessage(action);
 
 	return performStart(action);
 }
