@@ -49,6 +49,9 @@ string inline getProcList()
 		if (dir_entry.is_directory())
 		{
 			string sPid = (dir_entry.path().string() + "/comm");
+			if (!filesystem::exists(sPid))
+				continue;
+
 			sPid = sPid.substr(6);
 			sPid = sPid.substr(0, sPid.rfind('/'));
 
@@ -109,7 +112,7 @@ string inline getProcList()
 						ltrim(uid);
 						try
 						{
-							ret += uid + ";";
+							ret += to_string(1024 * stoi(uid)) + ";";
 						}
 						catch (...)
 						{
