@@ -70,7 +70,6 @@ string inline getProcList()
 				size_t size = fread(userUid, sizeof(char), 256, f);
 
 				string sUserUid = string(userUid);
-				
 				size_t pos = sUserUid.find("Uid:	");
 				if (pos == string::npos)
 					ret += ";";
@@ -80,7 +79,8 @@ string inline getProcList()
 					uid = uid.substr(0, uid.find("\t"));
 					try
 					{
-						ret += getpwuid(stoi(uid))->pw_name;
+						passwd* pass = getpwuid(stoi(uid));
+						ret += (pass ? pass->pw_name : ";");
 					}
 					catch (...)
 					{
@@ -94,6 +94,8 @@ string inline getProcList()
 				ret += ";";
 		}
 	}
+
+	ret += "#\r\n";
 
 	return ret;
 }
