@@ -51,6 +51,7 @@ string inline getProcList()
 			string sPid = (dir_entry.path().string() + "/comm");
 			sPid = sPid.substr(6);
 			sPid = sPid.substr(0, sPid.rfind('/'));
+
 			FILE* f = fopen(("/proc/" + sPid + "/comm").data(), "r");
 			if (f)
 			{
@@ -74,12 +75,13 @@ string inline getProcList()
 			if (f)
 			{
 				char userUid[2048]{ '\0' };
-				size_t size = fread(userUid, sizeof(char), 256, f);
+				size_t size = fread(userUid, sizeof(char), 2048, f);
 
 				if (size)
 				{
 					string sUserUid = string(userUid);
-					size_t pos = sUserUid.find("Uid:	");
+
+					size_t pos = sUserUid.find("Uid:\t");
 					if (pos == string::npos)
 						ret += ";";
 					else
@@ -89,7 +91,25 @@ string inline getProcList()
 						try
 						{
 							passwd* pass = getpwuid(stoi(uid));
-							ret += (pass ? pass->pw_name : ";");
+							ret += (pass ? pass->pw_name : "") + string(";");
+						}
+						catch (...)
+						{
+							ret += ";";
+						}
+					}
+
+					pos = sUserUid.find("VmRSS:\t");
+					if (pos == string::npos)
+						ret += ";";
+					else
+					{
+						string uid = sUserUid.substr(pos + 7);
+						uid = uid.substr(0, uid.find(" kB\n"));
+						ltrim(uid);
+						try
+						{
+							ret += uid + ";";
 						}
 						catch (...)
 						{
@@ -101,7 +121,7 @@ string inline getProcList()
 				fclose(f);
 			}
 			else
-				ret += ";";
+				ret += ";;";
 		}
 	}
 
