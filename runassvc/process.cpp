@@ -56,8 +56,15 @@ string inline getProcList()
 			{
 				char procName[256]{ '\0' };
 				size_t size = fread(procName, sizeof(char), 256, f);
-				ret += string(procName) + ";" + sPid + ";";
-				ret.erase(ret.find("\n"), 1);
+
+				if (size)
+				{
+					ret += string(procName) + ";" + sPid + ";";
+					ret.erase(ret.find("\n"), 1);
+				}
+				else
+					ret = ";;";
+
 				fclose(f);
 			}
 			else
@@ -69,22 +76,25 @@ string inline getProcList()
 				char userUid[2048]{ '\0' };
 				size_t size = fread(userUid, sizeof(char), 256, f);
 
-				string sUserUid = string(userUid);
-				size_t pos = sUserUid.find("Uid:	");
-				if (pos == string::npos)
-					ret += ";";
-				else
+				if (size)
 				{
-					string uid = sUserUid.substr(pos + 5);
-					uid = uid.substr(0, uid.find("\t"));
-					try
-					{
-						passwd* pass = getpwuid(stoi(uid));
-						ret += (pass ? pass->pw_name : ";");
-					}
-					catch (...)
-					{
+					string sUserUid = string(userUid);
+					size_t pos = sUserUid.find("Uid:	");
+					if (pos == string::npos)
 						ret += ";";
+					else
+					{
+						string uid = sUserUid.substr(pos + 5);
+						uid = uid.substr(0, uid.find("\t"));
+						try
+						{
+							passwd* pass = getpwuid(stoi(uid));
+							ret += (pass ? pass->pw_name : ";");
+						}
+						catch (...)
+						{
+							ret += ";";
+						}
 					}
 				}
 
