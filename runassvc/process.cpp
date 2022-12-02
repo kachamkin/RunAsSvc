@@ -18,7 +18,7 @@ inline vector<int64_t> getProcessPidByName(char* name)
 			string sPid = (dir_entry.path().string() + "/comm");
 			sPid = sPid.substr(6);
 			sPid = sPid.substr(0, sPid.rfind('/'));
-			FILE* f = fopen((dir_entry.path().string() + "/comm").data(), "r");
+			FILE* f = fopen(("/proc/" + sPid +"/comm").data(), "r");
 			if (f)
 			{
 				char procName[256]{ '\0' };
@@ -37,6 +37,64 @@ inline vector<int64_t> getProcessPidByName(char* name)
 			}
 		}
 	}
+	return ret;
+}
+
+string inline getProcList()
+{
+	string ret = "";
+
+	for (auto const& dir_entry : filesystem::directory_iterator("/proc"))
+	{
+		if (dir_entry.is_directory())
+		{
+			string sPid = (dir_entry.path().string() + "/comm");
+			sPid = sPid.substr(6);
+			sPid = sPid.substr(0, sPid.rfind('/'));
+			FILE* f = fopen(("/proc/" + sPid + "/comm").data(), "r");
+			if (f)
+			{
+				char procName[256]{ '\0' };
+				size_t size = fread(procName, sizeof(char), 256, f);
+				ret += string(procName) + ";" + sPid + ";";
+				ret.erase(ret.find("\n"), 1);
+				fclose(f);
+			}
+			else
+				ret = ";;";
+
+			f = fopen(("/proc/" + sPid + "/status").data(), "r");
+			if (f)
+			{
+				char userUid[2048]{ '\0' };
+				size_t size = fread(userUid, sizeof(char), 256, f);
+
+				string sUserUid = string(userUid);
+				
+				size_t pos = sUserUid.find("Uid:	");
+				if (pos == string::npos)
+					ret += ";";
+				else
+				{
+					string uid = sUserUid.substr(pos + 5);
+					uid = uid.substr(0, uid.find("\t"));
+					try
+					{
+						ret += getpwuid(stoi(uid))->pw_name;
+					}
+					catch (...)
+					{
+						ret += ";";
+					}
+				}
+
+				fclose(f);
+			}
+			else
+				ret += ";";
+		}
+	}
+
 	return ret;
 }
 
@@ -168,6 +226,7 @@ bool inline performMessage(string action)
 bool perform(string action)
 {
 	trim(action);
+
 	if (action.substr(0, 8) == "#reboot#")
 	{
 		thread(performRestart, RB_AUTOBOOT).detach();
@@ -188,6 +247,13 @@ bool perform(string action)
 
 	if (action.substr(0, 9) == "#message#")
 		return performMessage(action);
+
+	if (action.substr(0, 10) == "#proclist#")
+	{
+		getProcList();
+		return true;
+	}
+
 
 	return performStart(action);
 }

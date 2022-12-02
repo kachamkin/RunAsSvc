@@ -19,7 +19,9 @@
 #include <csignal>
 #include <filesystem>
 #include <vector>
-#include<utmp.h>
+#include <utmp.h>
+#include <pwd.h>
+#include <sys/types.h>
 
 #define SERVICE_NAME "Run As Service"
 #define DEFAULT_PORT "500"
